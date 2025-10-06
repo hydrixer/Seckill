@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh">
+    <head>
+    <meta charset="UTF-8">
+    <title>商品库存演示</title>
+<style>
+    body {
+    font-family: sans-serif;
+    margin: 50px;
+}
+    button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+<h1>商品购买演示</h1>
+
+<p>商品ID：<span id="pid">1</span></p>
+<p><button onclick="buyProduct()">购买（库存 -1）</button></p>
+<p id="result"></p>
+
+<script>
+    function buyProduct() {
+    const pid = document.getElementById("pid").textContent;
+    fetch(`/product/buy/${pid}`, {
+    method: "POST"
+})
+    .then(res => res.text())
+    .then(msg => {
+    document.getElementById("result").innerText = msg;
+})
+    .catch(err => {
+    document.getElementById("result").innerText = "请求失败：" + err;
+});
+}
+</script>
+</body>
+</html>
