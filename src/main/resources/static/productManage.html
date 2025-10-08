@@ -1,41 +1,218 @@
 <!DOCTYPE html>
 <html lang="zh">
-    <head>
+<head>
     <meta charset="UTF-8">
-    <title>商品库存演示</title>
-<style>
-    body {
-    font-family: sans-serif;
-    margin: 50px;
-}
-    button {
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-}
-</style>
+    <title>商品库存管理系统</title>
+    <style>
+        body {
+            font-family: "微软雅黑", sans-serif;
+            background: linear-gradient(135deg, #e0eafc, #cfdef3);
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 80%;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            border-bottom: 1px solid #eee;
+            padding: 12px;
+            text-align: center;
+            color: #333;
+            font-size: 15px;
+        }
+
+        th {
+            background-color: #f7f9fb;
+            font-weight: bold;
+            color: #555;
+        }
+
+        button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        button.buy {
+            background: linear-gradient(90deg, #4CAF50, #2e7d32);
+            color: white;
+        }
+
+        button.update {
+            background: linear-gradient(90deg, #2196F3, #1565c0);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            opacity: 0.9;
+        }
+
+        /* ✅ Toast 提示框样式 */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: 8px;
+            color: white;
+            margin-top: 10px;
+            min-width: 220px;
+            animation: slideIn 0.4s ease, fadeOut 0.5s ease 2.5s forwards;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            opacity: 0.95;
+        }
+
+        .toast.success {
+            background-color: #4caf50;
+        }
+
+        .toast.error {
+            background-color: #f44336;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateX(120%); }
+        }
+    </style>
 </head>
 <body>
-<h1>商品购买演示</h1>
 
-<p>商品ID：<span id="pid">1</span></p>
-<p><button onclick="buyProduct()">购买（库存 -1）</button></p>
-<p id="result"></p>
+<h2>📦 商品库存管理系统</h2>
+
+<table id="productTable">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>商品名</th>
+        <th>价格</th>
+        <th>库存</th>
+        <th>操作</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<!-- ✅ 气泡提示容器 -->
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
-    function buyProduct() {
-    const pid = document.getElementById("pid").textContent;
-    fetch(`/product/buy/${pid}`, {
-    method: "POST"
-})
-    .then(res => res.text())
-    .then(msg => {
-    document.getElementById("result").innerText = msg;
-})
-    .catch(err => {
-    document.getElementById("result").innerText = "请求失败：" + err;
-});
-}
+    // ✅ Toast 提示函数
+    function showToast(message, isSuccess = true) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'toast ' + (isSuccess ? 'success' : 'error');
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    // ✅ 加载商品列表
+    async function loadProducts() {
+        const res = await fetch('/product/showall');
+        const products = await res.json();
+        const tbody = document.querySelector('#productTable tbody');
+        tbody.innerHTML = '';
+
+        products.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+          <td>${p.id}</td>
+          <td>${p.name}</td>
+          <td>￥${p.price.toFixed(2)}</td>
+          <td id="stock-${p.id}">加载中...</td>
+          <td>
+            <button class="buy" onclick="buy(${p.id})">购买(-1)</button>
+            <button class="update" onclick="changeStock(${p.id})">修改库存</button>
+          </td>
+        `;
+            tbody.appendChild(tr);
+            loadStock(p.id);
+        });
+    }
+
+    // ✅ 异步加载库存
+    async function loadStock(id) {
+        try {
+            const res = await fetch(`/product/stock/${id}?t=${Date.now()}`);
+            const data = await res.json();
+            const stockCell = document.getElementById(`stock-${id}`);
+            if (data.success) {
+                stockCell.textContent = data.stock;
+            } else {
+                stockCell.textContent = data.message || '无数据';
+            }
+        } catch (e) {
+            document.getElementById(`stock-${id}`).textContent = '加载失败';
+        }
+    }
+
+    // ✅ 购买逻辑
+    async function buy(id) {
+        try {
+            const res = await fetch(`/product/buy/${id}`, { method: 'POST' });
+            const msg = await res.text();
+            showToast(msg, !msg.includes('失败') && !msg.includes('错误'));
+            loadStock(id);
+        } catch (e) {
+            showToast('操作失败: ' + e.message, false);
+        }
+    }
+
+    // ✅ 修改库存逻辑
+    async function changeStock(id) {
+        const stock = prompt("请输入新的库存数量：");
+        if (stock === null || stock === '') return;
+        try {
+            const res = await fetch(`/product/update/${id}?newStock=${stock}`, { method: 'POST' });
+            const msg = await res.text();
+            showToast(msg, !msg.includes('失败') && !msg.includes('错误'));
+            loadStock(id);
+        } catch (e) {
+            showToast('操作失败: ' + e.message, false);
+        }
+    }
+
+    // 页面加载
+    loadProducts();
+
+    // ✅ 定时刷新库存
+    setInterval(() => {
+        document.querySelectorAll('[id^="stock-"]').forEach(td => {
+            const id = td.id.split('-')[1];
+            loadStock(id);
+        });
+    }, 5000);
 </script>
+
 </body>
 </html>

@@ -1,7 +1,29 @@
 <!DOCTYPE mapper
-        PUBLIC"-//mybatis.org//DTD mapper 3.0//EN"
+        PUBLIC "-//mybatis.org//DTD mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.example.entity.CLASSNAME_HERE">
+<mapper namespace="com.rkw.seckill.mapper.OrderMapper">
+<insert id="addProduct" parameterType="com.rkw.seckill.entity.Product" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO product(price,name,stock) VALUES (#{price},#{name},#{stock})
+</insert>
 
+<select id="findProducts" resultType="com.rkw.seckill.entity.Product">
+    SELECT * from product
+</select>
 
+<select id="findById" parameterType="long" resultType="com.rkw.seckill.entity.Product">
+    SELECT * from product
+    where id = #{id}
+</select>
+
+<update id="updateStock" parameterType="map">
+    UPDATE product
+    set  stock = #{stock}
+    where id = #{id}
+</update>
+
+<update id="reduceStock" parameterType="long">
+    UPDATE product
+    SET stock = stock - 1
+    WHERE id = #{id} AND stock > 0
+</update>
 </mapper>
